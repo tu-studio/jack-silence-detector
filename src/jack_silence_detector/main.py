@@ -28,6 +28,13 @@ log.setLevel(logging.INFO)
     type=click.IntRange(min=1, clamp=True),
 )
 @click.option(
+    "-c",
+    "--client",
+    help="Client to listen to. can be used multiple times. if this is set, number-ports will be overwritten",
+    multiple=True,
+    type=str,
+)
+@click.option(
     "-s",
     "--threshold-time",
     help="Time to wait before triggering on silence",
@@ -35,9 +42,12 @@ log.setLevel(logging.INFO)
     type=(click.FloatRange(min=0, clamp=True)),
 )
 @click.version_option()
-def main(client_name: str, number_ports: int, threshold_time: float):
-
-    silence_detector = SilenceDetector(client_name, number_ports, threshold_time)
+def main(
+    client_name: str, client: tuple[str], number_ports: int, threshold_time: float
+):
+    silence_detector = SilenceDetector(
+        client_name, client, number_ports, threshold_time
+    )
 
     for sig in [signal.SIGINT, signal.SIGTERM]:
         signal.signal(sig, silence_detector.deactivate)
