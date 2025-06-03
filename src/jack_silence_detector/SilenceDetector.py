@@ -124,7 +124,7 @@ class SilenceDetector:
                 for tracker, inport in zip(self.silence_tracker, self.client.inports):
                     if not np.any(
                         [
-                            name.startswith(tracker.track_id)
+                            name.startswith(f"{tracker.track_id}:")
                             for name in [port.name] + port.aliases
                         ]
                     ):
