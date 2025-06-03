@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools >= 61.0.0", "versioneer[toml]==0.29"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+
+# [tool.setuptools.package-data]
+# jack_silence_detector = ["*.yml"]
+
+# automatically handle version numbers
+[tool.versioneer]
+VCS = "git"
+style = "pep440"
+versionfile_source = "src/jack_silence_detector/_version.py"
+versionfile_build = "jack_silence_detector/_version.py"
+tag_prefix = ""
+parentdir_prefix = "jack_silence_detector-"
+
+[project]
+name = "jack_silence_detector"
+description = "check when jack clients go silent for a while"
+authors = [{ name = "Max Weidauer", email = "weidauer@campus.tu-berlin.de" }]
+readme = "README.md"
+requires-python = ">=3.10"
+dynamic = ["version"]
+dependencies = ["JACK-Client", "click", "numpy"]
+license = { file = "LICENSE" }
+
+[project.scripts]
+jack-silence-detector = "jack_silence_detector.main:main"
+
+[project.urls]
+Github = "https://github.com/tu-studio/jack-silence-detector"
+Issues = "https://github.com/tu-studio/jack-silence-detector/issues"
