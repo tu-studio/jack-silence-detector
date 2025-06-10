@@ -83,12 +83,19 @@ class SilenceDetector:
         n_tries = 0
         while n_tries < reconnect_number_retries:
             try:
-                self.client = jack.Client(
-                    clientname, no_start_server=True, servername=servername
+                self.listen_client = jack.Client(
+                    f"{clientname}_listener",
+                    no_start_server=True,
+                    servername=servername,
+                )
+                self.connection_client = jack.Client(
+                    f"{clientname}_connection_setter",
+                    no_start_server=True,
+                    servername=servername,
                 )
                 break
             except jack.JackOpenError:
-                logging.warn("couldn't connect to jack server. retrying...")
+                logging.warning("couldn't connect to jack server. retrying...")
                 n_tries += 1
                 time.sleep(reconnect_wait_time)
         else:
@@ -96,15 +103,15 @@ class SilenceDetector:
             sys.exit(-2)
 
         # setup jack callbacks
-        @self.client.set_process_callback
+        @self.listen_client.set_process_callback
         def process(frames):
-            assert frames == self.client.blocksize
-            for i, port in enumerate(self.client.inports):
+            assert frames == self.listen_client.blocksize
+            for i, port in enumerate(self.listen_client.inports):
                 # check if any
                 new_state = np.max(np.abs(port.get_array()))
                 self.silence_tracker[i].update(not np.isclose(new_state, 0))
 
-        @self.client.set_xrun_callback
+        @self.listen_client.set_xrun_callback
         def xrun(delayed_usecs: float):
 
             log.warning(
@@ -114,14 +121,17 @@ class SilenceDetector:
         # if listening clients should be connected register callback to register all relevant clients on connection
         if self.connect_clients:
 
-            @self.client.set_port_registration_callback(only_available=True)
+            @self.listen_client.set_port_registration_callback(only_available=True)
             def port_created(port: jack.Port, was_registered: bool):
+                log.info("port created callback")
                 # skip irrelevant ports
                 if not (port.is_audio and port.is_output and was_registered):
                     return
 
                 # check if port belongs to one of the listen_clients
-                for tracker, inport in zip(self.silence_tracker, self.client.inports):
+                for tracker, inport in zip(
+                    self.silence_tracker, self.listen_client.inports
+                ):
                     if not np.any(
                         [
                             name.startswith(f"{tracker.track_id}:")
@@ -129,17 +139,18 @@ class SilenceDetector:
                         ]
                     ):
                         continue
+                    log.info("starting connection")
                     self.connect_port(port, inport)
                     break
 
         for i in range(self.n_ports):
-            self.client.inports.register((f"input_{i}"))
+            self.listen_client.inports.register((f"input_{i}"))
 
     def connect_port(self, src: jack.Port, dest: jack.Port):
         if ":monitor" in src.name:
             return
         try:
-            self.client.connect(src, dest)
+            self.connection_client.connect(src, dest)
         except jack.JackErrorCode as e:
             # handle connection already existing
             if e.code == 17:
@@ -150,16 +161,18 @@ class SilenceDetector:
     def activate(self, *args):
         """Activates the jack client, sets connection and starts blocking"""
         log.info("starting to listen")
-        with self.client:
+        with self.listen_client, self.connection_client:
 
             # if necessary create connections
             if self.connect_clients:
                 # iterate over client names
-                for tracker, inport in zip(self.silence_tracker, self.client.inports):
+                for tracker, inport in zip(
+                    self.silence_tracker, self.listen_client.inports
+                ):
                     listen_client_name = tracker.track_id
 
                     # get all outports belonging to this client
-                    outports = self.client.get_ports(
+                    outports = self.listen_client.get_ports(
                         f"{listen_client_name}:", is_audio=True, is_output=True
                     )
 
