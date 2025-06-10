@@ -53,4 +53,4 @@ if get_option('versioned_install')
 )
 endif
 
-# subdir('systemd')
+subdir('systemd')

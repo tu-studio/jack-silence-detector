@@ -1,6 +1,6 @@
 [Unit]
-Description=jack-connection-manager
-After=jack.service
+Description=jack-silence-detector
+After=jack.service audio-matrix.service 
 Requires=jack.service
 
 [Install]
@@ -9,4 +9,4 @@ WantedBy=default.target
 
 [Service]
 Type=simple
-ExecStart=@bin_dir@/jack-silence-detector
+ExecStart=@bin_dir@/jack-silence-detector -c REAPER -c system -c audio-matrix
