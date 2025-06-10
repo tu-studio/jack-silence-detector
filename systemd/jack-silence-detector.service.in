@@ -9,4 +9,5 @@ WantedBy=default.target
 
 [Service]
 Type=simple
+ExecStartPre=sleep 30
 ExecStart=@bin_dir@/jack-silence-detector -c REAPER -c system -c audio-matrix
